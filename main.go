@@ -126,7 +126,7 @@ func matchText(filepath string, fileContent []byte, re *regexp.Regexp, surroundi
 			// Case the left and right-context would go over the limit:
 			if match[0]-surrounding >= 0 && match[1]+surrounding > len(fileContent) {
 				// return from only the world match,
-				fmt.Println(string(fileContent[match[0]:match[1]]))
+				fmt.Println(string(fileContent))
 			}
 		}
 	}
