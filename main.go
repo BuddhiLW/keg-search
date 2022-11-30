@@ -7,11 +7,16 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+
+	"github.com/jwalton/gchalk"
 )
 
 // var defaultKegPath string = os.UserHomeDir() + "keg"
+var colorWithGchalk = gchalk.Red
 
 func main() {
+	gchalk.SetLevel(gchalk.LevelAnsi16m)
+
 	var kegPath string
 	var inputRegex string
 	var caseSensitive string
@@ -45,7 +50,7 @@ func main() {
 		if _, err := strconv.Atoi(file.Name()); err == nil {
 			if file.IsDir() {
 				nodeName := kegPath + "/" + file.Name()
-				searchNodeMatch(nodeName, inputRegex, caseSensitive, surrounding)
+				searchNodeMatch(kegPath, nodeName, inputRegex, caseSensitive, surrounding)
 			}
 		} else {
 			continue
@@ -53,7 +58,7 @@ func main() {
 	}
 }
 
-func searchNodeMatch(nodeName, regex, caseSensitive string, surrounding int) {
+func searchNodeMatch(kegPath, nodeName, regex, caseSensitive string, surrounding int) {
 	// filesNode, err := ioutil.ReadDir(nodeName) -> deprecated
 	dirOpen, err := os.Open(nodeName)
 	if err != nil {
@@ -61,29 +66,21 @@ func searchNodeMatch(nodeName, regex, caseSensitive string, surrounding int) {
 		log.Fatal(err)
 	}
 
-	filesNode, err := dirOpen.Readdir(0)
-	if err != nil {
-		log.Print(err, "Some error occured, while reading node")
-		log.Fatal(err)
-	}
-
-	for _, fileNode := range filesNode {
-		if !fileNode.IsDir() {
-			searchMatch(nodeName+"/README.md", regex, caseSensitive, surrounding)
+	if mapfile, maperr := os.Open(dirOpen.Name()); maperr == nil {
+		defer mapfile.Close()
+		info, _ := mapfile.Stat()
+		if info.IsDir() {
+			searchMatch(kegPath+"/"+string(info.Name())+"/README.md", regex, caseSensitive, surrounding)
 		}
 	}
 }
 
 func searchMatch(filepath, regex, caseSensitive string, surrounding int) {
-	// file, err := os.Open(filepath)
-
-	// scanner := bufio.NewScanner(file)
 	fileContent, err := os.ReadFile(filepath)
 	if err != nil {
 		log.Println(err, "error opening fileNode content")
 		log.Fatal(err)
 	}
-	// defer fileContent.Close()
 
 	if caseSensitive != "" {
 		re, err := regexp.Compile(regex)
@@ -100,33 +97,39 @@ func searchMatch(filepath, regex, caseSensitive string, surrounding int) {
 		}
 		matchText(filepath, fileContent, re, surrounding)
 	}
-
 }
 
 func matchText(filepath string, fileContent []byte, re *regexp.Regexp, surrounding int) {
-	matches := re.FindAllStringSubmatchIndex(string(fileContent), 5)
+	matches := re.FindAllStringSubmatchIndex(string(fileContent), -1)
 	if len(matches) != 0 {
-		fmt.Println(filepath)
-
 		for _, match := range matches {
 			fmt.Println(match)
-
-			// Case the left-context would go over the left-limit of the file, but not right:
 			if match[0]-surrounding < 0 && match[1]+surrounding <= len(fileContent) {
+				// Case the left-context would go over the left-limit of the file, but not right:
 				// return from the beginning of the file, until right-context.
-				fmt.Println(string(fileContent[0 : match[1]+surrounding]))
-			}
-
-			// Case the left-context would go over the right-limit of the file, but not left:
-			if match[0]-surrounding >= 0 && match[1]+surrounding > len(fileContent) {
+				fmt.Println(gchalk.Blue(filepath+":"),
+					string(fileContent[:match[0]])+
+						gchalk.Red(string(fileContent[match[0]:match[1]]))+
+						string(fileContent[match[1]:match[1]+surrounding]))
+			} else if match[0]-surrounding >= 0 && match[1]+surrounding > len(fileContent) {
+				// Case the left-context would go over the right-limit of the file, but not left:
 				// return from the left-context of the file, until end.
-				fmt.Println(string(fileContent[match[0]-surrounding:]))
-			}
-
-			// Case the left and right-context would go over the limit:
-			if match[0]-surrounding >= 0 && match[1]+surrounding > len(fileContent) {
-				// return from only the world match,
-				fmt.Println(string(fileContent))
+				fmt.Println(gchalk.Blue(filepath+":"),
+					string(fileContent[match[0]-surrounding:match[0]])+
+						gchalk.Red(string(fileContent[match[0]:match[1]]))+
+						string(fileContent[match[1]:]))
+			} else if match[0]-surrounding >= 0 && match[1]+surrounding > len(fileContent) {
+				// Case the left and right-context would go over the limit:
+				fmt.Println(gchalk.Blue(filepath+":"),
+					string(fileContent[:match[0]])+
+						gchalk.Red(string(fileContent[match[0]:match[1]]))+
+						string(fileContent[match[1]:]))
+			} else {
+				// Default
+				fmt.Println(gchalk.Blue(filepath+":"),
+					string(fileContent[match[0]-surrounding:match[0]])+
+						gchalk.Red(string(fileContent[match[0]:match[1]]))+
+						string(fileContent[match[1]:match[1]+surrounding]))
 			}
 		}
 	}

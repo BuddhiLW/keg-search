@@ -13,11 +13,20 @@ go install github.com/BuddhiLW/keg-search@latest
 In a straight-forward manner,
 
 ```sh
-keg-search -reg "Idiot"
+keg-search -reg "Idiot" -s 10
 ```
 
 will return any matches under `~/keg` to the `"Idiot"` regex, in a
-case-insensitive search.
+case-insensitive search, with then characters of back and forward-context (`-s 10`)
+
+```sh
+[17208 17213]
+/home/buddhilw/keg/6/README.md:  f...;ing idiot !!! Why d
+[27087 27092]
+/home/buddhilw/keg/6/README.md: eu ser um idiota viciado
+[20 25]
+/home/buddhilw/keg/3/README.md: sky's The Idiot (20221125
+```
 
 ### All optional arguments
 
